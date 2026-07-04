@@ -1,4 +1,4 @@
-import { useState, ChangeEvent, FormEvent } from 'react';
+import { useState, ChangeEvent, FormEvent, MouseEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { MapPin, Phone, Clock, Calendar, Send, CheckCircle2, Shield, MessageSquare, Database, AlertTriangle, Check, Copy, ChevronDown, ChevronUp, Mail } from 'lucide-react';
 import { BUSINESS_INFO, SERVICES } from '../data';
@@ -22,15 +22,86 @@ export default function Contact() {
   const [showSqlGuide, setShowSqlGuide] = useState(false);
   const [emailStatus, setEmailStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
   const [emailError, setEmailError] = useState<string | null>(null);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [showDevDetails, setShowDevDetails] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.location.search.includes('dev') || window.location.hash.includes('dev');
+    }
+    return false;
+  });
+
+  const validatePhoneNumber = (phone: string): string | null => {
+    if (!phone) return null;
+    const digits = phone.replace(/\D/g, '');
+    if (digits.length > 10) {
+      return 'Mobile number has more than 10 digits. Please write exactly 10 digits properly.';
+    }
+    if (digits.length > 0 && digits.length < 10) {
+      return 'Mobile number must be exactly 10 digits. Please write properly.';
+    }
+    return null;
+  };
 
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    
+    if (name === 'phone') {
+      setPhoneError(validatePhoneNumber(value));
+    }
+    if (name === 'name') {
+      if (value.trim()) {
+        setNameError(null);
+      }
+    }
+  };
+
+  const handleWhatsAppDirectClick = (e: MouseEvent<HTMLAnchorElement>) => {
+    let hasError = false;
+
+    if (!formData.name.trim()) {
+      setNameError('Please enter your Full Name.');
+      hasError = true;
+    } else {
+      setNameError(null);
+    }
+
+    const validationError = validatePhoneNumber(formData.phone);
+    if (!formData.phone.trim()) {
+      setPhoneError('Please enter your WhatsApp / Phone number.');
+      hasError = true;
+    } else if (validationError) {
+      setPhoneError(validationError);
+      hasError = true;
+    } else {
+      setPhoneError(null);
+    }
+
+    if (hasError) {
+      e.preventDefault();
+      // Focus the first error field
+      if (!formData.name.trim()) {
+        document.getElementById('name-input')?.focus();
+      } else {
+        document.getElementById('phone-input')?.focus();
+      }
+    }
   };
 
   const handleFormSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.phone) return;
+
+    const validationError = validatePhoneNumber(formData.phone);
+    if (validationError) {
+      setPhoneError(validationError);
+      const phoneInput = document.getElementById('phone-input');
+      if (phoneInput) {
+        phoneInput.focus();
+      }
+      return;
+    }
 
     setIsSubmitting(true);
     setSupabaseError(null);
@@ -112,7 +183,30 @@ export default function Contact() {
   // Pre-fill WhatsApp link using booking form data for immediate conversion
   const getWhatsAppBookingLink = () => {
     const chosenService = SERVICES.find(s => s.id === formData.service)?.title || formData.service;
-    const text = `Hi Dr. Roshan Kumar Sharma,\n\nI want to book an appointment with Sparsh Physiotherapy:\n\n👤 Name: ${formData.name}\n📞 Phone: ${formData.phone}\n🩺 Treatment: ${chosenService}\n📅 Preferred Date: ${formData.date}\n⏰ Slot: ${formData.slot.toUpperCase()}\n📝 Note: ${formData.message || 'No extra note'}\n\nPlease confirm availability. Thanks!`;
+    
+    let formattedDate = 'Not specified';
+    if (formData.date) {
+      try {
+        const d = new Date(formData.date);
+        formattedDate = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+      } catch (e) {
+        formattedDate = formData.date;
+      }
+    }
+
+    const text = `Hello Dr. Roshan Kumar Sharma,
+
+I want to book an appointment with Sparsh Physiotherapy. Here are my booking details:
+
+👤 Patient Name: ${formData.name.trim() || 'Not specified'}
+📞 Mobile Number: ${formData.phone.trim() || 'Not specified'}
+📅 Preferred Date: ${formattedDate}
+⏰ Time Slot: ${formData.slot.toUpperCase()}
+🩺 Treatment Required: ${chosenService}
+📝 Symptoms/Note: ${formData.message.trim() || 'None provided'}
+
+Please confirm my appointment slot availability. Thank you!`;
+
     return `https://wa.me/${BUSINESS_INFO.whatsappFormatted}?text=${encodeURIComponent(text)}`;
   };
 
@@ -241,8 +335,13 @@ export default function Contact() {
                           placeholder="E.g., Rajesh Prasad"
                           value={formData.name}
                           onChange={handleChange}
-                          className="bg-white border border-slate-200 hover:border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 rounded-xl py-3 px-4 text-sm text-slate-800 font-medium transition-all focus:outline-none"
+                          className={`bg-white border ${nameError ? 'border-red-400 focus:border-red-500 focus:ring-red-100' : 'border-slate-200 hover:border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100'} rounded-xl py-3 px-4 text-sm text-slate-800 font-medium transition-all focus:outline-none`}
                         />
+                        {nameError && (
+                          <span className="text-[11px] text-red-600 font-bold mt-1 flex items-center gap-1">
+                            <span>⚠️</span> {nameError}
+                          </span>
+                        )}
                       </div>
 
                       {/* Phone number input */}
@@ -258,8 +357,13 @@ export default function Contact() {
                           placeholder="E.g., 9931964144"
                           value={formData.phone}
                           onChange={handleChange}
-                          className="bg-white border border-slate-200 hover:border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 rounded-xl py-3 px-4 text-sm text-slate-800 font-medium transition-all focus:outline-none"
+                          className={`bg-white border ${phoneError ? 'border-red-400 focus:border-red-500 focus:ring-red-100' : 'border-slate-200 hover:border-slate-300 focus:border-blue-500 focus:ring-blue-100'} focus:ring-2 rounded-xl py-3 px-4 text-sm text-slate-800 font-medium transition-all focus:outline-none`}
                         />
+                        {phoneError && (
+                          <span className="text-[11px] text-red-600 font-bold mt-1 flex items-center gap-1">
+                            <span>⚠️</span> {phoneError}
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -356,6 +460,7 @@ export default function Contact() {
                       <a
                         id="direct-whatsapp-override"
                         href={getWhatsAppBookingLink()}
+                        onClick={handleWhatsAppDirectClick}
                         target="_blank"
                         rel="noreferrer"
                         className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3.5 px-6 rounded-xl shadow-lg transition-all text-base text-center"
@@ -393,128 +498,130 @@ export default function Contact() {
                       </p>
                     </div>
 
-                    {/* Email Dispatch Notice */}
-                    <div className="w-full max-w-md mt-1 mb-2">
-                      {emailStatus === 'success' ? (
-                        <div className="flex flex-col bg-blue-50/80 border border-blue-200/60 p-4 rounded-2xl shadow-sm text-left gap-2">
-                          <div className="flex items-start gap-3">
-                            <div className="w-9 h-9 bg-blue-100 rounded-full flex items-center justify-center shrink-0 mt-0.5">
-                              <Mail className="w-4 h-4 text-blue-600" />
+                    {showDevDetails && (
+                      <div className="w-full max-w-md flex flex-col gap-3">
+                        {/* Email Dispatch Notice */}
+                        <div className="w-full mt-1 mb-1">
+                          {emailStatus === 'success' ? (
+                            <div className="flex flex-col bg-blue-50/80 border border-blue-200/60 p-4 rounded-2xl shadow-sm text-left gap-2">
+                              <div className="flex items-start gap-3">
+                                <div className="w-9 h-9 bg-blue-100 rounded-full flex items-center justify-center shrink-0 mt-0.5">
+                                  <Mail className="w-4 h-4 text-blue-600" />
+                                </div>
+                                <div className="flex-1">
+                                  <p className="text-xs font-bold text-slate-800">Email Dispatched</p>
+                                  <p className="text-[10px] text-slate-600 font-medium mt-0.5 leading-relaxed">
+                                    Form details successfully sent to <strong className="text-blue-800 font-bold">roshankumarphisio@gmail.com</strong>!
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="text-[9px] bg-blue-100/40 text-blue-900 px-3 py-2 rounded-xl mt-1 leading-normal">
+                                💡 <strong>First Time?</strong> If you don't receive the email, check your spam/promotions folder or search for a confirmation email from <strong>FormSubmit</strong> to activate immediate delivery to your inbox!
+                              </div>
                             </div>
-                            <div className="flex-1">
-                              <p className="text-xs font-bold text-slate-800">Email Dispatched</p>
-                              <p className="text-[10px] text-slate-600 font-medium mt-0.5 leading-relaxed">
-                                Form details successfully sent to <strong className="text-blue-800 font-bold">roshankumarphisio@gmail.com</strong>!
-                              </p>
+                          ) : emailStatus === 'sending' ? (
+                            <div className="flex items-center justify-between bg-slate-50/80 border border-slate-200/60 p-4 rounded-2xl shadow-sm text-left gap-3">
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 bg-slate-100 rounded-full flex items-center justify-center shrink-0">
+                                  <Mail className="w-4 h-4 text-slate-500 animate-pulse" />
+                                </div>
+                                <div>
+                                  <p className="text-xs font-bold text-slate-700">Sending Email...</p>
+                                  <p className="text-[10px] text-slate-500 font-medium mt-0.5">Contacting mail servers...</p>
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                          <div className="text-[9px] bg-blue-100/40 text-blue-900 px-3 py-2 rounded-xl mt-1 leading-normal">
-                            💡 <strong>First Time?</strong> If you don't receive the email, check your spam/promotions folder or search for a confirmation email from <strong>FormSubmit</strong> to activate immediate delivery to your inbox!
-                          </div>
+                          ) : (
+                            <div className="flex flex-col bg-rose-50/80 border border-rose-200/60 p-4 rounded-2xl shadow-sm text-left gap-2">
+                              <div className="flex items-start gap-3">
+                                <div className="w-9 h-9 bg-rose-100 rounded-full flex items-center justify-center shrink-0 mt-0.5">
+                                  <AlertTriangle className="w-4 h-4 text-rose-600" />
+                                </div>
+                                <div className="flex-1">
+                                  <p className="text-xs font-bold text-rose-800">Email Dispatch Issue</p>
+                                  <p className="text-[10px] text-rose-600 font-medium mt-0.5 leading-relaxed">
+                                    Could not send direct email notice to roshankumarphisio@gmail.com: <strong>{emailError || 'Service temporarily unavailable'}</strong>.
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
-                      ) : emailStatus === 'sending' ? (
-                        <div className="flex items-center justify-between bg-slate-50/80 border border-slate-200/60 p-4 rounded-2xl shadow-sm text-left gap-3">
-                          <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 bg-slate-100 rounded-full flex items-center justify-center shrink-0">
-                              <Mail className="w-4 h-4 text-slate-500 animate-pulse" />
-                            </div>
-                            <div>
-                              <p className="text-xs font-bold text-slate-700">Sending Email...</p>
-                              <p className="text-[10px] text-slate-500 font-medium mt-0.5">Contacting mail servers...</p>
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col bg-rose-50/80 border border-rose-200/60 p-4 rounded-2xl shadow-sm text-left gap-2">
-                          <div className="flex items-start gap-3">
-                            <div className="w-9 h-9 bg-rose-100 rounded-full flex items-center justify-center shrink-0 mt-0.5">
-                              <AlertTriangle className="w-4 h-4 text-rose-600" />
-                            </div>
-                            <div className="flex-1">
-                              <p className="text-xs font-bold text-rose-800">Email Dispatch Issue</p>
-                              <p className="text-[10px] text-rose-600 font-medium mt-0.5 leading-relaxed">
-                                Could not send direct email notice to roshankumarphisio@gmail.com: <strong>{emailError || 'Service temporarily unavailable'}</strong>.
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
 
-                    {/* Supabase connection notice */}
-                    <div className="w-full max-w-md my-2">
-                      {!supabaseError ? (
-                        <div className="flex items-center justify-between bg-emerald-50/80 border border-emerald-200/60 p-4 rounded-2xl shadow-sm text-left gap-3">
-                          <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 bg-emerald-100 rounded-full flex items-center justify-center shrink-0">
-                              <Database className="w-4 h-4 text-emerald-600 animate-pulse" />
+                        {/* Supabase connection notice */}
+                        <div className="w-full my-1">
+                          {!supabaseError ? (
+                            <div className="flex items-center justify-between bg-emerald-50/80 border border-emerald-200/60 p-4 rounded-2xl shadow-sm text-left gap-3">
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 bg-emerald-100 rounded-full flex items-center justify-center shrink-0">
+                                  <Database className="w-4 h-4 text-emerald-600 animate-pulse" />
+                                </div>
+                                <div>
+                                  <p className="text-xs font-bold text-slate-800">Supabase Connected</p>
+                                  <p className="text-[10px] text-slate-500 font-medium mt-0.5">Appointment details saved successfully!</p>
+                                </div>
+                              </div>
+                              <span className="text-[10px] bg-emerald-100 text-emerald-800 font-extrabold px-2.5 py-1 rounded-full shrink-0">
+                                Active
+                              </span>
                             </div>
-                            <div>
-                              <p className="text-xs font-bold text-slate-800">Supabase Connected</p>
-                              <p className="text-[10px] text-slate-500 font-medium mt-0.5">Appointment details saved successfully!</p>
-                            </div>
-                          </div>
-                          <span className="text-[10px] bg-emerald-100 text-emerald-800 font-extrabold px-2.5 py-1 rounded-full shrink-0">
-                            Active
-                          </span>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col bg-amber-50/80 border border-amber-200/60 p-4 rounded-2xl text-left gap-3 shadow-sm">
-                          <div className="flex items-start gap-3">
-                            <div className="w-9 h-9 bg-amber-100 rounded-full flex items-center justify-center shrink-0 mt-0.5">
-                              <AlertTriangle className="w-4 h-4 text-amber-600" />
-                            </div>
-                            <div className="flex-1">
-                              <h4 className="text-xs font-bold text-slate-800">Supabase Sync Notice</h4>
-                              <p className="text-[10px] text-slate-600 font-medium mt-0.5 leading-relaxed">
-                                {(() => {
-                                  const errStr = supabaseError.toLowerCase();
-                                  if (errStr.includes('relation') && errStr.includes('does not exist')) {
-                                    return (
-                                      <span>
-                                        The <strong>appointments</strong> table does not exist in your Supabase database. Please run the SQL setup script below.
-                                      </span>
-                                    );
-                                  }
-                                  if (errStr.includes('api key') || errStr.includes('invalid api key') || errStr.includes('jwt') || errStr.includes('anon') || errStr.includes('failed to fetch')) {
-                                    return (
-                                      <span>
-                                        Failed to connect to your Supabase project. Please verify that your <strong>VITE_SUPABASE_URL</strong> and <strong>VITE_SUPABASE_ANON_KEY</strong> are set correctly in the environment configuration.
-                                      </span>
-                                    );
-                                  }
-                                  return (
-                                    <span>
-                                      <strong>Database error encountered:</strong> {supabaseError}. Ensure your table and policies are set up correctly.
-                                    </span>
-                                  );
-                                })()}
-                              </p>
-                            </div>
-                          </div>
-                          
-                          <button
-                            type="button"
-                            onClick={() => setShowSqlGuide(!showSqlGuide)}
-                            className="flex items-center justify-between w-full text-[10px] font-bold text-amber-950 bg-amber-100/60 hover:bg-amber-200/40 py-2 px-3 rounded-xl transition-all cursor-pointer"
-                          >
-                            <span>{showSqlGuide ? 'Hide Setup SQL Script' : 'View Setup SQL Script (10-second fix)'}</span>
-                            {showSqlGuide ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                          </button>
+                          ) : (
+                            <div className="flex flex-col bg-amber-50/80 border border-amber-200/60 p-4 rounded-2xl text-left gap-3 shadow-sm">
+                              <div className="flex items-start gap-3">
+                                <div className="w-9 h-9 bg-amber-100 rounded-full flex items-center justify-center shrink-0 mt-0.5">
+                                  <AlertTriangle className="w-4 h-4 text-amber-600" />
+                                </div>
+                                <div className="flex-1">
+                                  <h4 className="text-xs font-bold text-slate-800">Supabase Sync Notice</h4>
+                                  <p className="text-[10px] text-slate-600 font-medium mt-0.5 leading-relaxed">
+                                    {(() => {
+                                      const errStr = supabaseError.toLowerCase();
+                                      if (errStr.includes('relation') && errStr.includes('does not exist')) {
+                                        return (
+                                          <span>
+                                            The <strong>appointments</strong> table does not exist in your Supabase database. Please run the SQL setup script below.
+                                          </span>
+                                        );
+                                      }
+                                      if (errStr.includes('api key') || errStr.includes('invalid api key') || errStr.includes('jwt') || errStr.includes('anon') || errStr.includes('failed to fetch')) {
+                                        return (
+                                          <span>
+                                            Failed to connect to your Supabase project. Please verify that your <strong>VITE_SUPABASE_URL</strong> and <strong>VITE_SUPABASE_ANON_KEY</strong> are set correctly in the environment configuration.
+                                          </span>
+                                        );
+                                      }
+                                      return (
+                                        <span>
+                                          <strong>Database error encountered:</strong> {supabaseError}. Ensure your table and policies are set up correctly.
+                                        </span>
+                                      );
+                                    })()}
+                                  </p>
+                                </div>
+                              </div>
+                              
+                              <button
+                                type="button"
+                                onClick={() => setShowSqlGuide(!showSqlGuide)}
+                                className="flex items-center justify-between w-full text-[10px] font-bold text-amber-950 bg-amber-100/60 hover:bg-amber-200/40 py-2 px-3 rounded-xl transition-all cursor-pointer"
+                              >
+                                <span>{showSqlGuide ? 'Hide Setup SQL Script' : 'View Setup SQL Script (10-second fix)'}</span>
+                                {showSqlGuide ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                              </button>
 
-                          {showSqlGuide && (
-                            <div className="flex flex-col gap-2 mt-1">
-                              <p className="text-[10px] text-amber-800 leading-normal">
-                                1. Open your <strong className="text-amber-950 font-bold underline">{supabaseConfig.projectRef}</strong> project dashboard on Supabase.<br />
-                                2. Go to <strong>SQL Editor</strong> &gt; <strong>New Query</strong>.<br />
-                                3. Paste the code below and click <strong>Run</strong>:
-                              </p>
-                              <div className="relative bg-slate-900 text-[10px] font-mono text-slate-100 p-3.5 rounded-xl overflow-x-auto max-h-44 border border-slate-800 select-all">
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    navigator.clipboard.writeText(`-- 1. Create the appointments table safely
+                              {showSqlGuide && (
+                                <div className="flex flex-col gap-2 mt-1">
+                                  <p className="text-[10px] text-amber-800 leading-normal">
+                                    1. Open your <strong className="text-amber-950 font-bold underline">{supabaseConfig.projectRef}</strong> project dashboard on Supabase.<br />
+                                    2. Go to <strong>SQL Editor</strong> &gt; <strong>New Query</strong>.<br />
+                                    3. Paste the code below and click <strong>Run</strong>:
+                                  </p>
+                                  <div className="relative bg-slate-900 text-[10px] font-mono text-slate-100 p-3.5 rounded-xl overflow-x-auto max-h-44 border border-slate-800 select-all">
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        navigator.clipboard.writeText(`-- 1. Create the appointments table safely
 CREATE TABLE IF NOT EXISTS appointments (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   name TEXT NOT NULL,
@@ -532,15 +639,15 @@ ALTER TABLE appointments DISABLE ROW LEVEL SECURITY;
 -- 3. Explicitly grant anonymous inserts to the appointments table
 GRANT INSERT ON appointments TO anon;
 GRANT ALL ON appointments TO authenticated, service_role;`);
-                                    setCopiedSql(true);
-                                    setTimeout(() => setCopiedSql(false), 2000);
-                                  }}
-                                  className="absolute top-2 right-2 p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded transition-colors cursor-pointer"
-                                  title="Copy SQL code"
-                                >
-                                  {copiedSql ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                                </button>
-                                <pre className="text-[9px] leading-relaxed select-all">
+                                        setCopiedSql(true);
+                                        setTimeout(() => setCopiedSql(false), 2000);
+                                      }}
+                                      className="absolute top-2 right-2 p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded transition-colors cursor-pointer"
+                                      title="Copy SQL code"
+                                    >
+                                      {copiedSql ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                                    </button>
+                                    <pre className="text-[9px] leading-relaxed select-all">
 {`-- 1. Create the appointments table safely
 CREATE TABLE IF NOT EXISTS appointments (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -559,20 +666,22 @@ ALTER TABLE appointments DISABLE ROW LEVEL SECURITY;
 -- 3. Explicitly grant anonymous inserts to the appointments table
 GRANT INSERT ON appointments TO anon;
 GRANT ALL ON appointments TO authenticated, service_role;`}
-                                </pre>
-                              </div>
-                              {copiedSql && <span className="text-[10px] text-emerald-700 font-extrabold flex items-center gap-1">✓ SQL code copied to clipboard!</span>}
+                                    </pre>
+                                  </div>
+                                  {copiedSql && <span className="text-[10px] text-emerald-700 font-extrabold flex items-center gap-1">✓ SQL code copied to clipboard!</span>}
 
-                              {supabaseConfig.isUsingFallback && (
-                                <p className="text-[10px] bg-amber-100/40 text-amber-900 border border-amber-200/40 p-2.5 rounded-lg mt-1 leading-relaxed">
-                                  💡 <strong>Tip:</strong> The app is currently using the default/fallback Supabase project. If you wish to connect to your own private Supabase project, go to your <strong>Settings</strong> panel and set the <strong>VITE_SUPABASE_URL</strong> and <strong>VITE_SUPABASE_ANON_KEY</strong> environment variables!
-                                </p>
+                                  {supabaseConfig.isUsingFallback && (
+                                    <p className="text-[10px] bg-amber-100/40 text-amber-900 border border-amber-200/40 p-2.5 rounded-lg mt-1 leading-relaxed">
+                                      💡 <strong>Tip:</strong> The app is currently using the default/fallback Supabase project. If you wish to connect to your own private Supabase project, go to your <strong>Settings</strong> panel and set the <strong>VITE_SUPABASE_URL</strong> and <strong>VITE_SUPABASE_ANON_KEY</strong> environment variables!
+                                    </p>
+                                  )}
+                                </div>
                               )}
                             </div>
                           )}
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
 
                     {/* Highly engaging direct WhatsApp handover */}
                     <div className="bg-emerald-50 border border-emerald-100 p-5 rounded-2xl max-w-md w-full mt-1 flex flex-col gap-3">
@@ -591,24 +700,26 @@ GRANT ALL ON appointments TO authenticated, service_role;`}
                       </a>
                     </div>
 
-                    <button
-                      id="reset-form-btn"
-                      onClick={() => {
-                        setIsSuccess(false);
-                        setSupabaseError(null);
-                        setFormData({
-                          name: '',
-                          phone: '',
-                          service: 'back-pain',
-                          date: '',
-                          slot: 'morning',
-                          message: ''
-                        });
-                      }}
-                      className="text-xs text-slate-500 hover:text-blue-600 font-bold underline cursor-pointer"
-                    >
-                      Book another slot / Reset Form
-                    </button>
+                    <div className="flex items-center gap-3 mt-2 justify-center flex-wrap">
+                      <button
+                        id="reset-form-btn"
+                        onClick={() => {
+                          setIsSuccess(false);
+                          setSupabaseError(null);
+                          setFormData({
+                            name: '',
+                            phone: '',
+                            service: 'back-pain',
+                            date: '',
+                            slot: 'morning',
+                            message: ''
+                          });
+                        }}
+                        className="text-xs text-slate-500 hover:text-blue-600 font-bold underline cursor-pointer"
+                      >
+                        Book another slot / Reset Form
+                      </button>
+                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>
