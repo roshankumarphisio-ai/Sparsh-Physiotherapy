@@ -1,0 +1,16 @@
+# Netlify Configuration File
+# Learn more at https://docs.netlify.com/configure-builds/file-based-configuration/
+
+[build]
+  # The command that Netlify will run to build your React SPA
+  command = "npm run build"
+  
+  # The directory containing the static assets to be published (Vite outputs to dist)
+  publish = "dist"
+
+# Single Page Application (SPA) redirects rule
+# This ensures that deep links and page refreshes route back to index.html for React client-side routing
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
