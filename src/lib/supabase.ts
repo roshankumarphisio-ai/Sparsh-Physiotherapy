@@ -55,3 +55,19 @@ export async function saveAppointment(appointment: Appointment) {
     return { data: null, error: err };
   }
 }
+
+/**
+ * Fetches all appointments from Supabase.
+ */
+export async function getAppointments() {
+  try {
+    const { data, error } = await supabase
+      .from('appointments')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    return { data: data as Appointment[] | null, error };
+  } catch (err: any) {
+    return { data: null, error: err };
+  }
+}

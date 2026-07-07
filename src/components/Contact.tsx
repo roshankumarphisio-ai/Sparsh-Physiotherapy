@@ -111,7 +111,7 @@ export default function Contact() {
     // 1. Try to save to Supabase
     try {
       const chosenService = SERVICES.find(s => s.id === formData.service)?.title || formData.service;
-      const { error } = await saveAppointment({
+      const { data, error } = await saveAppointment({
         name: formData.name,
         phone: formData.phone,
         service: chosenService,
@@ -119,6 +119,29 @@ export default function Contact() {
         slot: formData.slot,
         message: formData.message || ''
       });
+
+      // Also save a local backup copy to localStorage for resilient admin viewing
+      try {
+        const localId = (data && data[0]?.id) || `local-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const localCopy = {
+          id: localId,
+          name: formData.name,
+          phone: formData.phone,
+          service: chosenService,
+          date: formData.date || 'Not specified',
+          slot: formData.slot,
+          message: formData.message || '',
+          created_at: new Date().toISOString()
+        };
+        const existing = JSON.parse(localStorage.getItem('sparsh_appointments') || '[]');
+        // Avoid duplicate saves if possible
+        if (!existing.some((item: any) => item.id === localId)) {
+          existing.unshift(localCopy);
+          localStorage.setItem('sparsh_appointments', JSON.stringify(existing));
+        }
+      } catch (localErr) {
+        console.warn('Could not save a local backup:', localErr);
+      }
 
       if (error) {
         console.warn('Supabase save error:', error);

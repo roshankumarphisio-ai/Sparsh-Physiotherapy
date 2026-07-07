@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import SEOHead from './components/SEOHead';
 import Header from './components/Header';
 import Hero from './components/Hero';
@@ -11,8 +12,27 @@ import FAQ from './components/FAQ';
 import Contact from './components/Contact';
 import FloatingCTAs from './components/FloatingCTAs';
 import Footer from './components/Footer';
+import AdminPanel from './components/AdminPanel';
 
 export default function App() {
+  const [isAdminView, setIsAdminView] = useState(false);
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      setIsAdminView(window.location.hash === '#/admin');
+    };
+
+    // Initialize check
+    handleHashChange();
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  if (isAdminView) {
+    return <AdminPanel onClose={() => { window.location.hash = ''; }} />;
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 antialiased selection:bg-blue-100 selection:text-blue-900">
       

@@ -153,6 +153,14 @@ export default function Footer() {
             >
               Terms of Use
             </button>
+            <span className="text-slate-700">|</span>
+            <a
+              id="footer-admin-btn"
+              href="#/admin"
+              className="hover:text-blue-400 text-slate-500 transition-colors uppercase cursor-pointer"
+            >
+              Admin Portal
+            </a>
           </div>
         </div>
 
