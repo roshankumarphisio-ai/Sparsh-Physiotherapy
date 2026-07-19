@@ -59,8 +59,8 @@ export default function Header() {
       id="main-header"
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         isScrolled
-          ? 'bg-white/95 backdrop-blur-md shadow-md py-3 border-b border-slate-100'
-          : 'bg-transparent py-5'
+          ? 'bg-white/95 backdrop-blur-md shadow-md py-2 border-b border-slate-100'
+          : 'bg-transparent py-3.5'
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -74,81 +74,110 @@ export default function Header() {
               e.preventDefault();
               handleLinkClick('#home');
             }}
-            className="flex items-center gap-3 group focus:outline-none"
+            className="flex items-center gap-2.5 group focus:outline-none shrink-0"
           >
-            <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center shadow-md shadow-blue-200 group-hover:scale-105 transition-transform duration-200">
-              <span className="font-display font-black text-xl text-white">S</span>
+            <div className="w-9 h-9 bg-blue-600 rounded-lg flex items-center justify-center shadow-md shadow-blue-200 group-hover:scale-105 transition-transform duration-200">
+              <span className="font-display font-black text-lg text-white">S</span>
             </div>
             <div>
-              <h1 className="text-lg sm:text-xl font-bold tracking-tight text-blue-900 leading-none group-hover:text-blue-600 transition-colors duration-200">Sparsh <span className="text-blue-600">Physiotherapy</span></h1>
-              <p className="text-[9px] sm:text-[10px] uppercase tracking-widest text-slate-400 font-semibold">Advanced Rehabilitation Clinic</p>
+              <h1 className="text-base sm:text-lg font-bold tracking-tight text-blue-900 leading-none group-hover:text-blue-600 transition-colors duration-200">Sparsh <span className="text-blue-600">Physiotherapy</span></h1>
+              <p className="text-[8px] uppercase tracking-widest text-slate-400 font-bold mt-0.5">Advanced Rehabilitation Clinic</p>
             </div>
           </a>
 
-          {/* Desktop Navigation */}
-          <nav id="desktop-nav" className="hidden lg:flex items-center gap-1">
-            {navLinks.map((link) => (
+          {/* Desktop Nav and CTA Buttons grouped to eliminate wide gap */}
+          <div className="hidden lg:flex items-center gap-6">
+            <nav id="desktop-nav" className="flex items-center gap-0.5">
+              {navLinks.map((link) => (
+                <a
+                  key={link.id}
+                  id={`nav-link-${link.id}`}
+                  href={link.href}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleLinkClick(link.href);
+                  }}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all duration-200 ${
+                    activeSection === link.id
+                      ? 'text-blue-600 bg-blue-50/70 font-bold'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                  }`}
+                >
+                  {link.name}
+                </a>
+              ))}
+            </nav>
+
+            <div className="h-4 w-px bg-slate-200" />
+
+            <div className="flex items-center gap-2.5">
               <a
-                key={link.id}
-                id={`nav-link-${link.id}`}
-                href={link.href}
+                id="header-call-btn"
+                href={`tel:${BUSINESS_INFO.phone}`}
+                className="flex items-center gap-1.5 text-blue-600 hover:text-blue-700 font-bold text-xs px-3.5 py-2 rounded-xl border border-blue-200 hover:border-blue-300 hover:bg-blue-50/50 transition-all duration-200"
+              >
+                <Phone className="w-3.5 h-3.5" />
+                <span>+91 99319 64144</span>
+              </a>
+              
+              <a
+                id="header-book-btn"
+                href="#contact"
                 onClick={(e) => {
                   e.preventDefault();
-                  handleLinkClick(link.href);
+                  handleLinkClick('#contact');
                 }}
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
-                  activeSection === link.id
-                    ? 'text-blue-600 bg-blue-50/70 font-semibold'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                }`}
+                className="flex items-center gap-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-md shadow-blue-500/15 hover:shadow-lg transition-all duration-200"
               >
-                {link.name}
+                <CalendarRange className="w-3.5 h-3.5" />
+                <span>Book Appointment</span>
               </a>
-            ))}
-          </nav>
-
-          {/* Desktop Call to Actions */}
-          <div className="hidden sm:flex items-center gap-3">
-            <a
-              id="header-call-btn"
-              href={`tel:${BUSINESS_INFO.phone}`}
-              className="flex items-center gap-1.5 text-blue-600 hover:text-blue-700 font-semibold text-sm px-3.5 py-2 rounded-xl border border-blue-200 hover:border-blue-300 hover:bg-blue-50/50 transition-all duration-200"
-            >
-              <Phone className="w-4 h-4" />
-              <span>+91 99319 64144</span>
-            </a>
-            
-            <a
-              id="header-book-btn"
-              href="#contact"
-              onClick={(e) => {
-                e.preventDefault();
-                handleLinkClick('#contact');
-              }}
-              className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold text-sm px-4 py-2.5 rounded-xl shadow-md shadow-blue-500/15 hover:shadow-lg transition-all duration-200"
-            >
-              <CalendarRange className="w-4 h-4" />
-              <span>Book Appointment</span>
-            </a>
+            </div>
           </div>
 
-          {/* Mobile Menu Button */}
+          {/* Tablet & Mobile Layout */}
           <div className="flex lg:hidden items-center gap-2">
+            {/* Show CTA buttons on Tablet */}
+            <div className="hidden sm:flex items-center gap-2.5 mr-2">
+              <a
+                id="header-call-btn-tablet"
+                href={`tel:${BUSINESS_INFO.phone}`}
+                className="flex items-center gap-1.5 text-blue-600 hover:text-blue-700 font-bold text-xs px-3.5 py-2 rounded-xl border border-blue-200 hover:border-blue-300 hover:bg-blue-50/50 transition-all duration-200"
+              >
+                <Phone className="w-3.5 h-3.5" />
+                <span>+91 99319 64144</span>
+              </a>
+              
+              <a
+                id="header-book-btn-tablet"
+                href="#contact"
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleLinkClick('#contact');
+                }}
+                className="flex items-center gap-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-md shadow-blue-500/15 hover:shadow-lg transition-all duration-200"
+              >
+                <CalendarRange className="w-3.5 h-3.5" />
+                <span>Book Appointment</span>
+              </a>
+            </div>
+
+            {/* Mobile Icon */}
             <a
               id="mobile-header-call"
               href={`tel:${BUSINESS_INFO.phone}`}
               className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl transition-all sm:hidden"
               aria-label="Call Clinic"
             >
-              <Phone className="w-5 h-5" />
+              <Phone className="w-4.5 h-4.5" />
             </a>
             <button
               id="mobile-menu-trigger"
               onClick={() => setIsOpen(!isOpen)}
-              className="p-2.5 text-slate-700 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 rounded-xl transition-all duration-200 focus:outline-none"
+              className="p-2 text-slate-700 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 rounded-xl transition-all duration-200 focus:outline-none"
               aria-label="Toggle navigation menu"
             >
-              {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
           </div>
 
